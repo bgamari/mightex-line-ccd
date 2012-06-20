@@ -84,7 +84,7 @@ class LineCamera (object):
             exp_time = a[3833]
             trigger_occurred = a[3434]
             trigger_count = a[3435]
-            return (dark, a, timestamp, exp_time)
+            return (dark, image, timestamp, exp_time)
         return map(parse_frame, range(nframes))
 
     def get_frames(self, nframes=None):
