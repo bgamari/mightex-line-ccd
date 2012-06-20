@@ -1,14 +1,14 @@
 # Mightex TCN-1304 Line CCD
 
-This is a rudimentary Python interface to the Mightex TCN-1304 line
-CCD camera
-[http://www.mightexsystems.com/family_info.php?cPath=5_48&categories_id=48].
+This is a rudimentary Python interface to the
+[Mightex TCN-1304](http://www.mightexsystems.com/family_info.php?cPath=5_48&categories_id=48)
+line CCD camera.
 See `test.py` for an
 example although the interface (namely the `LineCamera` class) should
 be pretty self-explanatory.
 
 ## Prerequisites
 
- * (pyUSB)[http://sourceforge.net/apps/trac/pyusb/] >=1.x
- * (Numpy)[http://www.scipy.org/]
+ * [pyUSB](http://sourceforge.net/apps/trac/pyusb/) >=1.x
+ * [Numpy](http://www.scipy.org/)
  
