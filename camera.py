@@ -123,7 +123,7 @@ if __name__ == '__main__':
         count = c.get_buffered_frames_count()
         if count == 0: continue
         c._prepare_frames(1)
-        frame = c._read_frame()
+        frame = c._read_frames(1)
         print frame[2], frame[0]
 
     
