@@ -22,6 +22,7 @@ class LineCamera (object):
         self.dev = usb.core.find(idVendor=0x04B4, idProduct=0x0328)
         if self.dev is None:
             raise RuntimeError('Device not found')
+        self.dev.set_configuration()
 
     def _write_cmd(self, msg):
         a = self.dev.write(cmd_out, msg, 0) == len(msg)
@@ -51,12 +52,12 @@ class LineCamera (object):
         return info
 
     def set_work_mode(self, mode):
-        self._write_cmd(bytearray('\x30\x01')+bytearray([mode]))
+        self._write_cmd(b'\x30\x01'+bytes([mode]))
 
     def set_exposure_time(self, time):
         if 0 > time > 0xffff:
             raise ValueError("Invalid exposure time")
-        self._write_cmd(bytearray('\x31\x02')+bytearray([(time & 0xff00) >> 8, time & 0xff]))
+        self._write_cmd(b'\x31\x02'+bytes([(time & 0xff00) >> 8, time & 0xff]))
 
     def get_buffered_frames_count(self):
         self._write_cmd(b'\x33\x01\x00')
@@ -66,13 +67,13 @@ class LineCamera (object):
     def _prepare_frames(self, nframes):
         if 0 > nframes > 0xff:
             raise ValueError('Invalid frame count')
-        self._write_cmd(b'\x34\x01'+bytearray([nframes]))
+        self._write_cmd(b'\x34\x01'+bytes([nframes]))
 
     def _read_frames(self, nframes):
         # For TCN-1304-U
         frame_length = 7680 # bytes
         a = self.dev.read(data_in, nframes*frame_length, 0)
-        print len(a)
+        print(len(a))
         if len(a) != frame_length*nframes:
             raise RuntimeError("Incorrect frame size")
         a = np.frombuffer(a, dtype='<u2')
@@ -107,7 +108,7 @@ class LineCamera (object):
             red,green,blue = (gains, gains, gains)
         else:
             red,green,blue = gains
-        self._write_cmd(b'\x39\x01'+[red,green,blue])
+        self._write_cmd(b'\x39\x01'+bytes([red,green,blue]))
         
     
 if __name__ == '__main__':
@@ -123,7 +124,8 @@ if __name__ == '__main__':
         count = c.get_buffered_frames_count()
         if count == 0: continue
         c._prepare_frames(1)
-        frame = c._read_frames(1)
-        print frame[2], frame[0]
+        frame = list(c._read_frames(1))
+        #print(frame[2], frame[0])
+        print(frame)
 
     
