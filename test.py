@@ -1,7 +1,5 @@
 import matplotlib
-matplotlib.use('gtkagg')
 import matplotlib.pyplot as pl
-import gobject
 from camera import *
 
 c = LineCamera()
@@ -29,9 +27,10 @@ def on_idle():
     x = np.arange(len(data))
     curve.set_data(x, data)
     fig.canvas.draw()
-    return True
     
 read_frame()
-gobject.idle_add(on_idle)
+timer = fig.canvas.new_timer(interval=100)
+timer.add_callback(on_idle)
+timer.start()
 pl.show()
 
