@@ -1,4 +1,6 @@
-import matplotlib
+#!/usr/bin/python
+
+import numpy as np
 import matplotlib.pyplot as pl
 from camera import *
 
@@ -18,10 +20,9 @@ fig = pl.figure()
 ax = fig.add_subplot(111)
 curve, = ax.plot([], [])
 ax.set_ylim(-10, 0xffff+10)
-#ax.set_xlim(0, 3648)
-ax.set_xlim(0, 7680/2)
+ax.set_xlim(0, 3648)
 
-def on_idle():
+def update():
     data = read_frame()
     if data is None: return True
     x = np.arange(len(data))
@@ -30,7 +31,7 @@ def on_idle():
     
 read_frame()
 timer = fig.canvas.new_timer(interval=100)
-timer.add_callback(on_idle)
+timer.add_callback(update)
 timer.start()
 pl.show()
 
