@@ -5,16 +5,18 @@ import matplotlib.pyplot as pl
 from camera import *
 
 c = LineCamera()
-print(c.get_firmware_ver())
-print(c.get_device_info())
+print('Firmware version', c.get_firmware_ver())
+print('Device version', c.get_device_info())
 c.set_work_mode(WorkMode.NORMAL)
 c.set_exposure_time(0x0004)
 
 def read_frame():
     try: frame = c.get_frame()
     except: return None
-    if frame is None: return
-    return frame[1] - np.mean(frame[0])
+    if frame is not None:
+        return frame[1] - np.mean(frame[0])
+    else:
+        return None
 
 fig = pl.figure()
 ax = fig.add_subplot(111)
