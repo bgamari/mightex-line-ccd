@@ -21,6 +21,7 @@ ax = fig.add_subplot(111)
 curve, = ax.plot([], [])
 ax.set_ylim(-10, 0xffff+10)
 ax.set_xlim(0, 3648)
+ax.axvline(x=1824, color='r')
 
 def update():
     data = read_frame()
