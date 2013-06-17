@@ -5,19 +5,39 @@ from numpy import exp, sqrt, pi
 from camera import *
 import microscope
 import wx
+from matplotlib.backends.backend_wx import _load_bitmap
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
 from matplotlib.backends.backend_wxagg import NavigationToolbar2Wx as Toolbar
 from matplotlib.figure import Figure
 
-
 class PlotPanel(wx.Panel):
+    ON_START_STOP = wx.NewId()
+    ON_ACQUIRE_BACKGROUND = wx.NewId()
+    ON_CLEAR_BACKGROUND = wx.NewId()
+
     def __init__(self, parent, camera):
         self.camera = camera
         wx.Panel.__init__(self, parent, -1)
 
         self.fig = Figure((5,4), 75)
         self.canvas = FigureCanvasWxAgg(self, -1, self.fig)
-        self.toolbar = Toolbar(self.canvas) #matplotlib toolbar
+        self.toolbar = Toolbar(self.canvas)
+        
+        self.toolbar.AddSimpleTool(self.ON_START_STOP,
+                                   _load_bitmap('stock_left.xpm'),
+                                   'Start/stop', 'Start/stop feedback')
+        wx.EVT_TOOL(self.toolbar, self.ON_START_STOP, self.OnStartStop)
+
+        self.toolbar.AddSimpleTool(self.ON_ACQUIRE_BACKGROUND,
+                                   _load_bitmap('stock_right.xpm'),
+                                   'Acquire background', 'Acquire background')
+        wx.EVT_TOOL(self.toolbar, self.ON_ACQUIRE_BACKGROUND, self.OnAcquireBackground)
+        
+        self.toolbar.AddSimpleTool(self.ON_CLEAR_BACKGROUND,
+                                   _load_bitmap('stock_right.xpm'),
+                                   'Clear background', 'Clear background')
+        wx.EVT_TOOL(self.toolbar, self.ON_CLEAR_BACKGROUND, self.OnClearBackground)
+        
         self.toolbar.Realize()
 
         sizer = wx.BoxSizer(wx.VERTICAL)
@@ -95,19 +115,21 @@ class PlotPanel(wx.Panel):
 
     def OnStartStop(self, evt):
         if self.update_timer.IsRunning():
+            print 'stop'
             self.update_timer.Stop()
         else:
+            print 'start'
             self.update_timer.Start(100, False)
             self.canvas.draw()
 
     def OnAcquireBackground(self, evt):
-        self.clear_background()
-        while self.background is None:
-            self.background = self.read_frame()
+        print 'acquire background'
+        self.background = self.read_frame()
 
         self.setpoint = self.read_frame() - self.background
 
     def OnClearBackground(self, evt):
+        print 'clear background'
         self.clear_background()
         
     def onEraseBackground(self, evt):
