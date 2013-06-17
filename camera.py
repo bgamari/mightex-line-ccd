@@ -72,7 +72,6 @@ class LineCamera (object):
         # For TCN-1304-U
         frame_length = 7680 # bytes
         a = self.dev.read(data_in, nframes*frame_length, 0)
-        print len(a)
         if len(a) != frame_length*nframes:
             raise RuntimeError("Incorrect frame size")
         a = np.frombuffer(a, dtype='<u2')
