@@ -15,8 +15,7 @@ class PlotPanel(wx.Panel):
     ON_ACQUIRE_BACKGROUND = wx.NewId()
     ON_CLEAR_BACKGROUND = wx.NewId()
 
-    def __init__(self, parent, camera):
-        self.camera = camera
+    def __init__(self, parent, camera, microscope):
         wx.Panel.__init__(self, parent, -1)
 
         self.fig = Figure((5,4), 75)
@@ -46,6 +45,9 @@ class PlotPanel(wx.Panel):
         self.SetSizer(sizer)
         self.Fit()        
 
+        self.camera = camera
+        self.microscope = microscope
+        
         im = self.read_frame()
         self.image_sz = len(im)
         self.background = np.zeros(self.image_sz)
@@ -57,7 +59,9 @@ class PlotPanel(wx.Panel):
         self.init_plot_data()
 
         self.update_timer = wx.PyTimer(self.update)
-        self.OnStartStop(None)
+        self.update_timer.Start(100, False)
+
+        self.feedback_timer = wx.PyTimer(self.feedback)
 
     def set_window_size(self, window_sz):
         self.kernel = exp(-np.arange(4*window_sz)**2 / window_sz**2) / sqrt(2*pi) / window_sz
@@ -104,21 +108,29 @@ class PlotPanel(wx.Panel):
         self.ax2.autoscale_view(scaley=False)
 
         self.fig.canvas.draw()   
-    
+
+    def feedback_timer(self):
+        max_x = self.maxima[-1]
+        error = self.max_x - self.setpoint
+        if gain*error > min_move:
+            self.microscope.move(gain*error)
+        
     def GetToolBar(self):
         return self.toolbar
 
     def OnStartStop(self, evt):
-        if self.update_timer.IsRunning():
+        if self.feedback_timer.IsRunning():
             print 'stop'
-            self.update_timer.Stop()
+            self.feedback_timer.Stop()
         else:
             print 'start'
-            self.update_timer.Start(100, False)
+            self.feedback_timer.Start(1000)
 
     def OnAcquireBackground(self, evt):
         print 'acquire background'
         self.background = self.read_frame()
+
+    def OnSetSetpoint(self, evt):
         self.setpoint = self.read_frame() - self.background
 
     def OnClearBackground(self, evt):
@@ -128,9 +140,9 @@ class PlotPanel(wx.Panel):
     def onEraseBackground(self, evt):
         pass
 
-#m = Microscope()
-#print 'Connected to microscope: %s' % m.get_unit()
-#m.enable_buttons()
+m = Microscope()
+print 'Connected to microscope: %s' % m.get_unit()
+m.enable_buttons()
 
 c = LineCamera()
 print('Firmware version', c.get_firmware_ver())
