@@ -2,9 +2,116 @@
 
 import numpy as np
 from numpy import exp, sqrt, pi
-import matplotlib.pyplot as pl
 from camera import *
 import microscope
+import wx
+from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
+from matplotlib.backends.backend_wxagg import NavigationToolbar2Wx as Toolbar
+from matplotlib.figure import Figure
+
+
+class PlotPanel(wx.Panel):
+    def __init__(self, parent, camera):
+        self.camera = camera
+        wx.Panel.__init__(self, parent, -1)
+
+        self.fig = Figure((5,4), 75)
+        self.canvas = FigureCanvasWxAgg(self, -1, self.fig)
+        self.toolbar = Toolbar(self.canvas) #matplotlib toolbar
+        self.toolbar.Realize()
+
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(self.canvas, 1, wx.LEFT|wx.TOP|wx.GROW)
+        sizer.Add(self.toolbar, 0, wx.GROW)
+        self.SetSizer(sizer)
+        self.Fit()        
+
+        im = self.read_frame()
+        self.image_sz = len(im)
+        self.clear_background()
+            
+        self.oversamples = 10
+        self.images = np.zeros((self.image_sz-39, self.oversamples)) # FIXME
+        self.image_n = 0
+        self.set_window_size(10)
+        self.init_plot_data()
+
+        self.update_timer = wx.PyTimer(self.update)
+        self.OnStartStop(None)
+
+    def set_window_size(self, window_sz):
+        self.kernel = exp(-np.arange(4*window_sz)**2 / window_sz**2) / sqrt(2*pi) / window_sz
+
+    def clear_background(self):
+        self.background = np.zeros(self.image_sz)
+        
+    def read_frame(self):
+        frame = None
+        for i in range(5): # Try five times to get frame
+            try: frame = self.camera.get_frame()
+            except: pass
+        if frame is None:
+            raise RuntimeError('Failed to acquire frame')
+        return frame[1] - np.mean(frame[0])
+        
+    def init_plot_data(self):
+        self.read_frame()
+        
+        self.ax1 = self.fig.add_subplot(211)
+        self.curve, = self.ax1.plot([], [])
+        self.ax1.set_ylim(-10, 0xffff+10)
+        self.ax1.set_xlim(0, 3648)
+        self.ax1.axvline(x=1824, color='r')
+
+        self.ax2 = self.fig.add_subplot(212)
+        self.maxima = []
+        self.max_curve, = self.ax2.plot(self.maxima)
+        self.ax2.set_xlim(0,2000)
+        self.ax2.set_ylim(1000,2000)
+
+        #self.toolbar.update()
+
+    def update(self):
+        data = self.read_frame() - self.background
+        data = np.convolve(data, self.kernel, 'valid')
+        self.images[:,self.image_n] = data
+        data = np.mean(self.images, axis=1)
+        self.image_n = (self.image_n + 1) % self.oversamples
+        x = np.arange(len(data))
+        self.curve.set_data(x, data)
+
+        max_x = np.argmax(data)
+        self.maxima.append(max_x)
+        self.maxima = self.maxima[:1000]
+        n = len(self.maxima)
+        self.max_curve.set_data(np.arange(n), self.maxima)
+        self.ax2.relim()
+        self.ax2.autoscale_view(scaley=False)
+
+        self.fig.canvas.draw()   
+    
+    def GetToolBar(self):
+        return self.toolbar
+
+    def OnStartStop(self, evt):
+        if self.update_timer.IsRunning():
+            self.update_timer.Stop()
+        else:
+            self.update_timer.Start(100, False)
+            self.canvas.draw()
+
+    def OnAcquireBackground(self, evt):
+        self.clear_background()
+        while self.background is None:
+            self.background = self.read_frame()
+
+        self.setpoint = self.read_frame() - self.background
+
+    def OnClearBackground(self, evt):
+        self.clear_background()
+        
+    def onEraseBackground(self, evt):
+        pass
 
 #m = Microscope()
 #print 'Connected to microscope: %s' % m.get_unit()
@@ -16,73 +123,11 @@ print('Device version', c.get_device_info())
 c.set_work_mode(WorkMode.NORMAL)
 c.set_exposure_time(0x0015)
 
-def read_frame():
-    try: frame = c.get_frame()
-    except: return None
-    if frame is not None:
-        return frame[1] - np.mean(frame[0])
-    else:
-        return None
-    
-print('move the lens to have only the background on the camera')    
-raw_input('press ENTER')
+if __name__ == '__main__':
+    app = wx.PySimpleApp()
+    frame = wx.Frame(None, -1, 'Plotter')
+    plotter = PlotPanel(frame, c)
+    frame.Show()
+    app.MainLoop()
 
-background = None
-while background is None:
-    background = read_frame()
-
-
-print('move the lens to have the maximum of signal')
-print('you are set on the focus position')
-raw_input('press ENTER')
-
-fig = pl.figure()
-ax = fig.add_subplot(211)
-curve, = ax.plot([], [])
-ax.set_ylim(-10, 0xffff+10)
-ax.set_xlim(0, 3648)
-ax.axvline(x=1824, color='r')
-
-ax = fig.add_subplot(212)
-maxima = []
-setpoint=read_frame()-background
-max_curve, = ax.plot(maxima)
-ax.set_xlim(0,2000)
-ax.set_ylim(1000,2000)
-
-window_sz = 10
-kernel = exp(-np.arange(4*window_sz)**2 / window_sz**2) / sqrt(2*pi) / window_sz
-
-image_sz = 3609
-oversamples = 10
-images = np.zeros((image_sz, oversamples))
-image_n = 0
-
-
-def update():
-    global maxima, image_n, images
-    data = read_frame() - background
-    data = np.convolve(data, kernel, 'valid')
-    images[:,image_n] = data
-    data = np.mean(images, axis=1)
-    image_n = (image_n + 1) % oversamples
-    if data is None: return True
-    x = np.arange(len(data))
-    curve.set_data(x, data)
-
-    max_x = np.argmax(data)
-    maxima.append(max_x)
-    maxima = maxima[:1000]
-    n = len(maxima)
-    max_curve.set_data(np.arange(n), maxima)
-    ax.relim()
-    ax.autoscale_view(scaley=False)
-
-    fig.canvas.draw()   
-    
-read_frame()
-timer = fig.canvas.new_timer(interval=100)
-timer.add_callback(update)
-timer.start()
-pl.show()
 
