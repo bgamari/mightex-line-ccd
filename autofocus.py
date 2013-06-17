@@ -4,6 +4,11 @@ import numpy as np
 from numpy import exp, sqrt, pi
 import matplotlib.pyplot as pl
 from camera import *
+import microscope
+
+#m = Microscope()
+#print 'Connected to microscope: %s' % m.get_unit()
+#m.enable_buttons()
 
 c = LineCamera()
 print('Firmware version', c.get_firmware_ver())
@@ -18,11 +23,18 @@ def read_frame():
         return frame[1] - np.mean(frame[0])
     else:
         return None
+    
+print('move the lens to have only the background on the camera')    
+raw_input('press ENTER')
 
 background = None
 while background is None:
     background = read_frame()
-raw_input
+
+
+print('move the lens to have the maximum of signal')
+print('you are set on the focus position')
+raw_input('press ENTER')
 
 fig = pl.figure()
 ax = fig.add_subplot(211)
@@ -33,6 +45,7 @@ ax.axvline(x=1824, color='r')
 
 ax = fig.add_subplot(212)
 maxima = []
+setpoint=read_frame()-background
 max_curve, = ax.plot(maxima)
 ax.set_xlim(0,2000)
 ax.set_ylim(1000,2000)
@@ -44,6 +57,7 @@ image_sz = 3609
 oversamples = 10
 images = np.zeros((image_sz, oversamples))
 image_n = 0
+
 
 def update():
     global maxima, image_n, images
