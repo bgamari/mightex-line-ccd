@@ -48,8 +48,8 @@ class PlotPanel(wx.Panel):
 
         im = self.read_frame()
         self.image_sz = len(im)
-        self.clear_background()
-            
+        self.background = np.zeros(self.image_sz)
+        
         self.oversamples = 10
         self.images = np.zeros((self.image_sz-39, self.oversamples)) # FIXME
         self.image_n = 0
@@ -62,9 +62,6 @@ class PlotPanel(wx.Panel):
     def set_window_size(self, window_sz):
         self.kernel = exp(-np.arange(4*window_sz)**2 / window_sz**2) / sqrt(2*pi) / window_sz
 
-    def clear_background(self):
-        self.background = np.zeros(self.image_sz)
-        
     def read_frame(self):
         frame = None
         for i in range(5): # Try five times to get frame
@@ -88,8 +85,6 @@ class PlotPanel(wx.Panel):
         self.max_curve, = self.ax2.plot(self.maxima)
         self.ax2.set_xlim(0,2000)
         self.ax2.set_ylim(1000,2000)
-
-        #self.toolbar.update()
 
     def update(self):
         data = self.read_frame() - self.background
@@ -120,17 +115,15 @@ class PlotPanel(wx.Panel):
         else:
             print 'start'
             self.update_timer.Start(100, False)
-            self.canvas.draw()
 
     def OnAcquireBackground(self, evt):
         print 'acquire background'
         self.background = self.read_frame()
-
         self.setpoint = self.read_frame() - self.background
 
     def OnClearBackground(self, evt):
         print 'clear background'
-        self.clear_background()
+        self.background[:] = 0
         
     def onEraseBackground(self, evt):
         pass
