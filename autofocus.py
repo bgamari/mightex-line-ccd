@@ -3,7 +3,7 @@
 import numpy as np
 from numpy import exp, sqrt, pi
 from camera import *
-import microscope
+from microscope import ButtonfulMicroscope
 import wx
 from matplotlib.backends.backend_wx import _load_bitmap
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
@@ -14,7 +14,8 @@ class PlotPanel(wx.Panel):
     ON_START_STOP = wx.NewId()
     ON_ACQUIRE_BACKGROUND = wx.NewId()
     ON_CLEAR_BACKGROUND = wx.NewId()
-
+    ON_SETPOINT = wx.NewId()
+    
     def __init__(self, parent, camera, microscope):
         wx.Panel.__init__(self, parent, -1)
 
@@ -36,6 +37,11 @@ class PlotPanel(wx.Panel):
                                    _load_bitmap('stock_right.xpm'),
                                    'Clear background', 'Clear background')
         wx.EVT_TOOL(self.toolbar, self.ON_CLEAR_BACKGROUND, self.OnClearBackground)
+
+        self.toolbar.AddSimpleTool(self.ON_SETPOINT,
+                                   _load_bitmap('stock_left.xpm'),
+                                   'setpoint', 'Set setpoint')
+        wx.EVT_TOOL(self.toolbar, self.ON_SETPOINT, self.OnSetSetpoint)
         
         self.toolbar.Realize()
 
@@ -109,7 +115,7 @@ class PlotPanel(wx.Panel):
 
         self.fig.canvas.draw()   
 
-    def feedback_timer(self):
+    def feedback(self):
         max_x = self.maxima[-1]
         error = self.max_x - self.setpoint
         if gain*error > min_move:
@@ -140,9 +146,8 @@ class PlotPanel(wx.Panel):
     def onEraseBackground(self, evt):
         pass
 
-m = Microscope()
+m = ButtonfulMicroscope()
 print 'Connected to microscope: %s' % m.get_unit()
-m.enable_buttons()
 
 c = LineCamera()
 print('Firmware version', c.get_firmware_ver())
@@ -153,7 +158,7 @@ c.set_exposure_time(0x0015)
 if __name__ == '__main__':
     app = wx.PySimpleApp()
     frame = wx.Frame(None, -1, 'Plotter')
-    plotter = PlotPanel(frame, c)
+    plotter = PlotPanel(frame, c, m)
     frame.Show()
     app.MainLoop()
 
