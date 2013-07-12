@@ -53,7 +53,13 @@ class Microscope(object):
     def _query_cmd(self, cmd):
         self.device.write('%s?\r\n' % cmd)
         return self._expect_reply(cmd)
-    
+
+    def log_out(self):
+        self.device.write('1LOG OUT\r\n')
+        self._expect_reply('1LOG')
+        self.device.write('2LOG OUT\r\n')
+        self._expect_reply('2LOG')
+        
     def get_unit(self):
         self.device.write('1UNIT?\r\n')
         return self._expect_reply('1UNIT')
