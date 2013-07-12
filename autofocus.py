@@ -5,6 +5,7 @@ from numpy import exp, sqrt, pi
 from camera import *
 from microscope import ButtonfulMicroscope
 import wx
+import wx.lib.agw.floatspin
 from matplotlib.backends.backend_wx import _load_bitmap
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
 from matplotlib.backends.backend_wxagg import NavigationToolbar2Wx as Toolbar
@@ -52,12 +53,12 @@ class PlotPanel(wx.Panel):
         self.toolbar = Toolbar(self.canvas)
         
         self.toolbar.AddSimpleTool(self.ON_START_STOP,
-                                   _load_bitmap('stock_left.xpm'),
-                                   'Start/stop', 'Start/stop feedback')
+                                   _load_bitmap('buttons_loop_up_02.xpm'),
+                                   'Start/stop feedback', 'Start/stop feedback')
         wx.EVT_TOOL(self.toolbar, self.ON_START_STOP, self.OnStartStop)
 
         self.toolbar.AddSimpleTool(self.ON_ACQUIRE_BACKGROUND,
-                                   _load_bitmap('stock_right.xpm'),
+                                   _load_bitmap('acq_back.xpm'),
                                    'Acquire background', 'Acquire background')
         wx.EVT_TOOL(self.toolbar, self.ON_ACQUIRE_BACKGROUND, self.OnAcquireBackground)
         
@@ -67,15 +68,33 @@ class PlotPanel(wx.Panel):
         wx.EVT_TOOL(self.toolbar, self.ON_CLEAR_BACKGROUND, self.OnClearBackground)
 
         self.toolbar.AddSimpleTool(self.ON_SETPOINT,
-                                   _load_bitmap('stock_left.xpm'),
+                                   _load_bitmap('setpoint.xpm'),
                                    'setpoint', 'Set setpoint')
         wx.EVT_TOOL(self.toolbar, self.ON_SETPOINT, self.OnSetSetpoint)
         
         self.toolbar.Realize()
 
+        self.pid_sizer = wx.BoxSizer(wx.VERTICAL)
+        def label_widget(label, widget):
+            hbox = wx.BoxSizer(wx.HORIZONTAL)
+            hbox.Add(wx.StaticText(self, label=label))
+            hbox.Add(widget)
+            return hbox
+        self.p_spin = wx.lib.agw.floatspin.FloatSpin(self, 1, digits=2, value='0.2', increment=0.1)
+        self.p_spin.Bind(wx.EVT_SPINCTRL, self.OnPIDChanged)
+        self.pid_sizer.Add(label_widget('Proportional gain', self.p_spin))
+        self.i_spin = wx.lib.agw.floatspin.FloatSpin(self, 1, digits=2, value='0.5', increment=0.1)
+        self.i_spin.Bind(wx.EVT_SPINCTRL, self.OnPIDChanged)
+        self.pid_sizer.Add(label_widget('Integral gain', self.i_spin))
+
+        self.exposure_spin = wx.SpinCtrl(self, 1, value='10')
+        self.exposure_spin.Bind(wx.EVT_SPINCTRL, self.OnExposureChanged)
+        self.pid_sizer.Add(label_widget('Exposure time (us)', self.exposure_spin))
+        
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self.canvas, 1, wx.LEFT|wx.TOP|wx.GROW)
         sizer.Add(self.toolbar, 0, wx.GROW)
+        sizer.Add(self.pid_sizer)
         self.SetSizer(sizer)
         self.Fit()        
 
@@ -145,7 +164,7 @@ class PlotPanel(wx.Panel):
 
         max_x = np.argmax(data)
         self.maxima.append(max_x)
-        self.maxima = self.maxima[:1000]
+        self.maxima = self.maxima[-1000:]
         n = len(self.maxima)
         self.max_curve.set_data(np.arange(n), self.maxima)
         self.ax2.relim()
@@ -164,6 +183,15 @@ class PlotPanel(wx.Panel):
     def GetToolBar(self):
         return self.toolbar
 
+    def OnPIDChanged(self, evt):
+        self.fb_loop.p = self.p_spin.GetValue()
+        self.fb_loop.i = self.i_spin.GetValue()
+        print 'P = %1.2f, I = %1.2f' % (self.fb_loop.p, self.fb_loop.i)
+
+    def OnExposureChanged(self, evt):
+        self.camera.set_exposure_time(self.exposure_spin.GetValue())
+        print 'Exposure time = %1.2f' % self.exposure_spin.GetValue()
+        
     def OnStartStop(self, evt):
         if self.feedback_timer.IsRunning():
             print 'stop'
@@ -189,6 +217,7 @@ class PlotPanel(wx.Panel):
         pass
 
 m = ButtonfulMicroscope()
+m.enable_jog()
 print 'Connected to microscope: %s' % m.get_unit()
 
 c = LineCamera()
@@ -197,7 +226,7 @@ print('Device version', c.get_device_info())
 c.set_work_mode(WorkMode.NORMAL)
 c.set_exposure_time(10)
 
-fb_loop = PILoop(0.2, 0)
+fb_loop = PILoop(0.2, 0.5)
 
 if __name__ == '__main__':
     app = wx.PySimpleApp()
