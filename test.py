@@ -14,7 +14,7 @@ def read_frame():
     try: frame = c.get_frame()
     except: return None
     if frame is not None:
-        return frame[1] - np.mean(frame[0])
+        return frame.image - np.mean(frame.dark)
     else:
         return None
 
